@@ -40,4 +40,14 @@ pi install ./pi-local-llm
 ```
 
 
-
+pi list
+  npm:pi-kilocode
+    C:\Users\j\.pi\agent\npm\node_modules\pi-kilocode
+  D:\Downloads\LLM_base\mini-llm-dev\pi-ext-minicode\pi-local-llm
+    D:\Downloads\LLM_base\mini-llm-dev\pi-ext-minicode\pi-local-llm
+  npm:@betterlmy/pi-auto-compact
+    C:\Users\j\.pi\agent\npm\node_modules\@betterlmy\pi-auto-compact
+  npm:pi-open-agents
+    C:\Users\j\.pi\agent\npm\node_modules\pi-open-agents
+  D:\Downloads\LLM_base\mini-llm-dev\pi-ext-minicode\pi-windows-shell
+    D:\Downloads\LLM_base\mini-llm-dev\pi-ext-minicode\pi-windows-shell

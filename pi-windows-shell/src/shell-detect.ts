@@ -15,20 +15,37 @@ export interface ShellInfo {
   version?: string;
 }
 
-const systemExe = (name: string) => join(process.env.SystemRoot || "C:\\Windows", "System32", name);
-
-function where(cmd: string): string | null {
-  try {
-    return execFileSync(systemExe("where.exe"), [cmd], { cwd: homedir(), encoding: "utf8", timeout: 3000 })
-      .split(/\r?\n/)[0]?.trim() || null;
-  } catch { return null; }
+export interface ShellInfo {
+  kind: WindowsShellKind;
+  displayName: string;
+  executable: string;
+  available: boolean;
+  version?: string;
+  error?: string;
 }
 
-function getVersion(cmd: string, args: string[]): string | undefined {
+const systemExe = (name: string) => join(process.env.SystemRoot || "C:\\Windows", "System32", name);
+
+type WhereResult = { path: string | null; error: string | null };
+
+function where(cmd: string): WhereResult {
   try {
-    return execFileSync(cmd, args, { encoding: "utf8", timeout: 3000 })
+    const out = execFileSync(systemExe("where.exe"), [cmd], { cwd: homedir(), encoding: "utf8", timeout: 3000 })
       .split(/\r?\n/)[0]?.trim();
-  } catch { return undefined; }
+    return { path: out || null, error: null };
+  } catch (err: any) {
+    return { path: null, error: err?.message || String(err) };
+  }
+}
+
+type VersionResult = { version: string | undefined; error: string | null };
+
+function getVersion(cmd: string, args: string[]): VersionResult {
+  try {
+    return { version: execFileSync(cmd, args, { encoding: "utf8", timeout: 3000 }).split(/\r?\n/)[0]?.trim(), error: null };
+  } catch (err: any) {
+    return { version: undefined, error: err?.message || String(err) };
+  }
 }
 
 // ponytail: detection spawns where.exe + a version probe per kind — memoized at
@@ -43,29 +60,49 @@ export function resetShellDetectionCache(): void {
 function detectShellUncached(kind: WindowsShellKind): ShellInfo {
   switch (kind) {
     case "pwsh": {
-      const exe = where("pwsh");
-      return { kind, displayName: "PowerShell 7+", executable: exe || "pwsh.exe", available: !!exe, version: exe ? getVersion(exe, ["--version"]) : undefined };
+      const whereResult = where("pwsh");
+      const ver = whereResult.path ? getVersion(whereResult.path, ["--version"]) : { version: undefined, error: null };
+      return {
+        kind, displayName: "PowerShell 7+", executable: whereResult.path || "pwsh.exe",
+        available: !!whereResult.path, version: ver.version,
+        error: whereResult.error || ver.error || undefined,
+      };
     }
     case "powershell": {
-      const exe = where("powershell");
-      return { kind, displayName: "Windows PowerShell", executable: exe || "powershell.exe", available: !!exe, version: exe ? getVersion(exe, ["-Command", "$PSVersionTable.PSVersion.ToString()"]) : undefined };
+      const whereResult = where("powershell");
+      const ver = whereResult.path ? getVersion(whereResult.path, ["-Command", "$PSVersionTable.PSVersion.ToString()"]) : { version: undefined, error: null };
+      return {
+        kind, displayName: "Windows PowerShell", executable: whereResult.path || "powershell.exe",
+        available: !!whereResult.path, version: ver.version,
+        error: whereResult.error || ver.error || undefined,
+      };
     }
     case "cmd": {
       const comspec = process.env.ComSpec || "cmd.exe";
-      const exe = existsSync(comspec) ? comspec : where("cmd");
+      const exe = existsSync(comspec) ? comspec : where("cmd").path;
       return { kind, displayName: "Command Prompt", executable: exe || "cmd.exe", available: !!exe || process.platform === "win32" };
     }
     case "git-bash": {
       const candidates = [process.env.PI_GIT_BASH_PATH || "", "C:\\Program Files\\Git\\bin\\bash.exe", "C:\\Program Files (x86)\\Git\\bin\\bash.exe"].filter(Boolean);
-      const fromPath = where("bash");
-      const exe = candidates.find(c => existsSync(c)) || (fromPath ? fromPath : null);
+      const whereResult = where("bash");
+      const exe = candidates.find(c => existsSync(c)) || (whereResult.path ? whereResult.path : null);
       const configured = process.env.PI_GIT_BASH_PATH;
       const isGitBash = exe && (exe === configured || /(?:^|[\\/])git(?:[\\/]|$)/i.test(exe));
-      return { kind, displayName: "Git Bash", executable: exe || "bash.exe", available: !!exe && !!isGitBash, version: exe ? getVersion(exe, ["--version"]) : undefined };
+      const ver = exe ? getVersion(exe, ["--version"]) : { version: undefined, error: null };
+      return {
+        kind, displayName: "Git Bash", executable: exe || "bash.exe",
+        available: !!exe && !!isGitBash, version: ver.version,
+        error: whereResult.error || ver.error || undefined,
+      };
     }
     case "wsl": {
-      const exe = where("wsl");
-      return { kind, displayName: "WSL", executable: exe || systemExe("wsl.exe"), available: !!exe, version: exe ? getVersion(exe, ["--status"]) : undefined };
+      const whereResult = where("wsl");
+      const ver = whereResult.path ? getVersion(whereResult.path, ["--status"]) : { version: undefined, error: null };
+      return {
+        kind, displayName: "WSL", executable: whereResult.path || systemExe("wsl.exe"),
+        available: !!whereResult.path, version: ver.version,
+        error: whereResult.error || ver.error || undefined,
+      };
     }
   }
 }

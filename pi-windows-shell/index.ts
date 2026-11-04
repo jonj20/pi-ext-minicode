@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { detectShell, detectAllShells, getDefaultShell, resetShellDetectionCache } from "./src/shell-detect";
-import type { WindowsShellKind } from "./src/shell-detect";
+import type { WindowsShellKind, ShellInfo } from "./src/shell-detect";
 import { executeCommand as execCmd } from "./src/shell-exec";
 import type { ExecOptions } from "./src/shell-exec";
 import * as pathUtils from "./src/path-utils";
@@ -44,10 +44,37 @@ export default function piWindowsToolsExtension(pi: ExtensionAPI) {
   if (process.env.PI_WINDOWS_TOOLS_ENABLED === "false") return;
   // Session-scoped allows from the "Allow for this session" prompt choice.
   const sessionAllowedCommands = new Set<string>();
-  pi.on("session_start", () => { sessionAllowedCommands.clear(); });
+
+  // 自动探测并设置默认 shell（仅当用户未手动指定 PI_WINDOWS_SHELL 时生效）。
+  // 返回检测到的 shell 信息，供调用者做用户反馈。
+  function autoSelectDefaultShell(): ShellInfo | null {
+    if (process.env.PI_WINDOWS_SHELL) return null;
+    const detected = getDefaultShell();
+    if (detected.available) {
+      process.env.PI_WINDOWS_SHELL = detected.kind;
+      return detected;
+    }
+    return null;
+  }
+
+  pi.on("session_start", (_ctx) => {
+    sessionAllowedCommands.clear();
+    // 每次新会话开头自动探测默认 shell，确保时机足够早。
+    const detected = autoSelectDefaultShell();
+    if (detected) {
+      process.stdout.write(`[pi-windows-tools] Auto-selected shell: ${detected.displayName} (${detected.kind})\n`);
+    }
+  });
   // ── Shell tools ──
   pi.registerTool({ name: "windows_shell_detect", label: "Windows: Detect Shells", description: "Detect available Windows shells.", promptSnippet: "Detect available Windows shells", promptGuidelines: ["Use to check what shells are available."], parameters: Type.Object({}),
-    execute() { return tr(detectAllShells().map(s => `  ${s.available ? "\u2713" : "\u2717"} ${s.displayName}${s.version ? " " + s.version : ""}`).join("\n")); } });
+    execute() {
+      return tr(detectAllShells().map(s => {
+        const mark = s.available ? "\u2713" : "\u2717";
+        const version = s.version ? " " + s.version : "";
+        const error = s.error ? ` [error: ${s.error}]` : "";
+        return `  ${mark} ${s.displayName}${version}${error}`;
+      }).join("\n"));
+    } });
 
   pi.registerTool({ name: "windows_shell_exec", label: "Windows: Execute Command", description: "Execute a command through a Windows shell.", promptSnippet: "Execute a command through a Windows shell",
     promptGuidelines: ["Use for PowerShell/cmd/WSL-native commands (pwsh, Get-*, Set-*, wsl, cmd).", "For plain read-only inspection (ls, grep, find), use bash — it runs automatically in plan mode without a confirmation prompt.", 'Use shell:"wsl" for WSL.', "Dangerous commands require confirmation."],
@@ -182,13 +209,11 @@ export default function piWindowsToolsExtension(pi: ExtensionAPI) {
   // ── Agent prompt ──
   pi.on("before_agent_start", async (event) => {
     if (process.env.PI_WINDOWS_TOOLS_ENABLED === "false" || process.platform !== "win32") return;
-    // 若用户未手动指定 shell，自动探测并设为默认（仅当前进程有效）
-    if (!process.env.PI_WINDOWS_SHELL) {
-      const detected = getDefaultShell();
-      if (detected.available) {
-        process.env.PI_WINDOWS_SHELL = detected.kind;
-      }
-    }
-    return { systemPrompt: `${event.systemPrompt}\n\n---\n\n## Windows Environment\n\n${buildShellGuidance(rs())}` };
+    // 兜底：若 session_start 未触发或环境变量仍未设，再次自动探测。
+    const detected = autoSelectDefaultShell();
+    const shellHint = detected
+      ? `当前自动选用的 Windows shell：${detected.displayName} (${detected.kind})，可执行命令：windows_shell_exec`
+      : "未检测到任何可用 Windows shell（pwsh / powershell / git-bash / cmd / wsl）。建议安装 PowerShell 7 或 Git for Windows，并设置 PI_WINDOWS_SHELL 环境变量。";
+    return { systemPrompt: `${event.systemPrompt}\n\n---\n\n## Windows Environment\n\n${shellHint}\n\n${buildShellGuidance(rs())}` };
   });
 }
