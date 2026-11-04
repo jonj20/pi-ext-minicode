@@ -1,7 +1,7 @@
 ```
 # 联网与安全
 pi install npm:pi-web-access
-pi install npm:@wkqco33/pi-loop-guard
+#pi install npm:@wkqco33/pi-loop-guard
 
 #安全
 pi install npm:@momenttttt/pi-read-guard
@@ -26,9 +26,13 @@ pi install npm:@betterlmy/pi-auto-compact
 pi install npm:pi-footer
 
 #免费模型
-pi install npm:pi-free
+#pi install npm:pi-free
 #pi install npm:pi-freerouter
 pi install npm:pi-kilocode
+#pi install npm:pi-our-free-model
+#pi install npm:ck-pi-cline
+
+#call pi install "npm:@bacnh85/pi-windows-tools"
 
 #本地模型自动检测
 pi install ./pi-local-llm

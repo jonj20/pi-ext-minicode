@@ -17,8 +17,9 @@ call pi install "npm:@betterlmy/pi-auto-compact"
 
 call pi install "npm:pi-footer"
 
-call pi install "npm:pi-free"
-call pi install "npm:pi-kilocode"
+call pi install "npm:pi-our-free-model"
+
+call pi install "%~dp0\pi-windows-shell"
 
 call pi install "%~dp0\pi-local-llm"
 

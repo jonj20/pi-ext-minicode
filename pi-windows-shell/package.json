@@ -1,0 +1,43 @@
+{
+  "name": "pi-windows-tools",
+  "version": "0.0.1",
+  "description": "Pi extension for Windows-native tool manipulation — shell profiles, path conversion, command execution, WSL bridge, safety policy, and developer tool discovery.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "npx mocha",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "README.md",
+    "index.ts",
+    "src/",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@sinclair/typebox": "*"
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "^0.34.41",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.0.0",
+    "chai": "^4.5.0",
+    "mocha": "^11.8.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "serialize-javascript@>=5.0.0 <7.0.5": "^7.0.5",
+    "js-yaml@>=4.0.0 <4.3.1": "^4.3.1",
+    "brace-expansion@>=2.0.0 <2.1.4": "^2.1.4",
+    "diff": "^8.0.3"
+  }
+}
