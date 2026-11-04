@@ -6,7 +6,9 @@
 - 自动探测本地 llama.cpp / Ollama / LMStudio / vLLM / LocalAI
 - 默认端口：8080、18080（llama.cpp）、11434（ollama）、1234（lmstudio）、8000（vllm）
 - 支持自定义端点配置（项目/全局均可）
+- 支持启动/停止本地模型服务进程（services）
 - 提供 /local-models 命令：重新探测并用 UI 选择切换本地模型
+- 提供 /local-models-start / /local-models-stop / /local-models-list 命令管理服务
 - 兼容 models.json 的 localModels 配置
 - 与标准 pi 的内置 llama.cpp 尽量避免冲突（仅在无内置时注册默认 llama.cpp）
 
@@ -87,6 +89,7 @@
 | startupTimeoutMs | number | 1000 | 启动探测超时（毫秒） |
 | 	imeoutMs | number | 2000 | /local-models 命令探测超时（毫秒） |
 | endpoints | array | 默认端点列表 | 自定义端点列表，会叠加到默认端点上（按 aseUrl 去重） |
+| services | array | 无 | 本地模型服务进程配置，用于启动/停止本地模型 |
 
 endpoints 项字段：
 | 字段 | 类型 | 必填 | 说明 |
@@ -97,6 +100,41 @@ ame/model-id） |
 | aseUrl | string | 是 | 服务根地址（http/https） |
 | modelsPath | string | 否 | 模型列表路径，OpenAI 格式默认 /v1/models，Ollama 格式用 /api/tags |
 | ormat | "openai" \| "ollama" | 否 | 响应格式，默认 openai |
+
+services 项字段：
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| name | string | 是 | 服务名称，作为 provider 名称注册 |
+| executable | string | 是 | 可执行文件路径（如 llama.cpp server） |
+| args | string[] | 否 | 启动参数 |
+| port | number | 是 | 服务监听端口，用于健康检查 |
+| env | object | 否 | 环境变量，叠加到当前进程 env |
+| cwd | string | 否 | 工作目录 |
+| startupTimeoutMs | number | 10000 | 启动健康检查超时（毫秒） |
+| healthCheckPath | string | /v1/models | 健康检查路径 |
+| healthCheckIntervalMs | number | 500 | 健康检查间隔（毫秒） |
+
+services 示例：
+
+``json
+{
+  "services": [
+    {
+      "name": "llama-server",
+      "executable": "D:/llama.cpp/llama-server.exe",
+      "args": ["-m", "models/gguf-model.gguf", "-c", "4096"],
+      "port": 8080,
+      "healthCheckPath": "/v1/models",
+      "startupTimeoutMs": 30000
+    }
+  ]
+}
+``
+
+启动后插件会自动调用 `/v1/models` 健康检查，通过后注册为 provider。可用命令管理：
+- `/local-models-start <name>`：启动指定服务并注册模型
+- `/local-models-stop <name>`：停止服务并注销 provider
+- `/local-models-list`：列出所有服务及运行状态
 
 ## 使用
 1. 启动本地服务（llama.cpp 8080/18080、ollama 11434 等）

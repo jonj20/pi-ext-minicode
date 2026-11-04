@@ -5,12 +5,25 @@ import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { stripJsonComments } from "./json.ts";
 import type { LocalEndpoint } from "./probe.ts";
 
+export interface ServiceConfig {
+	name: string;
+	executable: string;
+	args?: string[];
+	port?: number;
+	env?: Record<string, string>;
+	cwd?: string;
+	startupTimeoutMs?: number;
+	healthCheckPath?: string;
+	healthCheckIntervalMs?: number;
+}
+
 export interface LocalModelsConfig {
 	enabled?: boolean;
 	probeOnStartup?: boolean;
 	startupTimeoutMs?: number;
 	timeoutMs?: number;
 	endpoints?: LocalEndpoint[];
+	services?: ServiceConfig[];
 }
 
 interface ProviderFileConfig {
@@ -122,6 +135,12 @@ export function loadLocalModelsConfig(cwd: string): LoadedLocalModelsConfig {
 			globalDedicated?.endpoints,
 			projectModelsConfig?.endpoints,
 			globalModelsConfig?.endpoints,
+		),
+		services: pick(
+			projectDedicated?.services,
+			globalDedicated?.services,
+			projectModelsConfig?.services,
+			globalModelsConfig?.services,
 		),
 	};
 

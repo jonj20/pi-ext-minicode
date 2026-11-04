@@ -1,7 +1,7 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getProviders } from "@earendil-works/pi-ai/compat";
 import type { ExtensionAPI, ProviderModelConfig } from "@earendil-works/pi-coding-agent";
-import { loadLocalModelsConfig } from "./config.ts";
+import { loadLocalModelsConfig, type ServiceConfig } from "./config.ts";
 import {
 	DEFAULT_ENDPOINTS,
 	type DiscoveredModel,
@@ -9,6 +9,7 @@ import {
 	type LocalEndpoint,
 	probeEndpoints,
 } from "./probe.ts";
+import { serviceManager } from "./process.ts";
 
 const ownedProviders = new Set<string>();
 const BUILTIN_LLAMA_NAMES = ["llama-cpp", "llama.cpp", "llamacpp"] as const;
@@ -83,8 +84,24 @@ export default async function localModelsExtension(pi: ExtensionAPI): Promise<vo
 	const startupTimeoutMs = Math.max(100, config.startupTimeoutMs ?? 1000);
 	const timeoutMs = Math.max(100, config.timeoutMs ?? 2000);
 
-	if (config.enabled !== false && config.probeOnStartup !== false) {
-		await probeAndRegister(pi, endpoints, startupTimeoutMs);
+	if (config.enabled !== false) {
+		for (const svc of config.services ?? []) {
+			try {
+				await serviceManager.start(svc);
+				const serviceEndpoint: LocalEndpoint = {
+					name: svc.name,
+					baseUrl: `http://localhost:${svc.port}`,
+				};
+				await probeAndRegister(pi, [serviceEndpoint], timeoutMs);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error(`[local-models] Failed to start service ${svc.name}: ${message}`);
+			}
+		}
+
+		if (config.probeOnStartup !== false) {
+			await probeAndRegister(pi, endpoints, startupTimeoutMs);
+		}
 	}
 
 	pi.on("session_start", (_event, ctx) => {
@@ -135,6 +152,68 @@ export default async function localModelsExtension(pi: ExtensionAPI): Promise<vo
 			if (!ok) {
 				ctx.ui.notify(`Could not select ${model.provider}/${model.id}`, "error");
 			}
+		},
+	});
+
+	pi.registerCommand("local-models-start", {
+		description: "Start a configured local model service",
+		handler: async (args, ctx) => {
+			const name = args[0];
+			if (!name) {
+				ctx.ui.notify("Usage: /local-models-start <name>", "warning");
+				return;
+			}
+			const svc = config.services?.find((s) => s.name === name);
+			if (!svc) {
+				ctx.ui.notify(`Service "${name}" not configured`, "warning");
+				return;
+			}
+			try {
+				await serviceManager.start(svc);
+				const serviceEndpoint: LocalEndpoint = {
+					name: svc.name,
+					baseUrl: `http://localhost:${svc.port}`,
+				};
+				await probeAndRegister(pi, [serviceEndpoint], timeoutMs);
+				ctx.ui.notify(`Service "${name}" started`, "info");
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				ctx.ui.notify(`Failed to start "${name}": ${message}`, "error");
+			}
+		},
+	});
+
+	pi.registerCommand("local-models-stop", {
+		description: "Stop a running local model service",
+		handler: async (args, ctx) => {
+			const name = args[0];
+			if (!name) {
+				ctx.ui.notify("Usage: /local-models-stop <name>", "warning");
+				return;
+			}
+			const ok = await serviceManager.stop(name);
+			if (ok) {
+				pi.unregisterProvider(name);
+				ownedProviders.delete(name);
+				ctx.ui.notify(`Service "${name}" stopped`, "info");
+			} else {
+				ctx.ui.notify(`Service "${name}" is not running`, "warning");
+			}
+		},
+	});
+
+	pi.registerCommand("local-models-list", {
+		description: "List local model services and their status",
+		handler: async (_args, ctx) => {
+			const instances = serviceManager.getAll();
+			if (instances.length === 0) {
+				ctx.ui.notify("No local model services", "info");
+				return;
+			}
+			const lines = instances.map(
+				(i) => `${i.name}: ${i.status} (pid ${i.pid}${i.port ? ", port " + i.port : ""})`,
+			);
+			ctx.ui.notify(lines.join("\n"), "info");
 		},
 	});
 }
