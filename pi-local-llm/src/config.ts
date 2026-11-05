@@ -5,17 +5,8 @@ import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { stripJsonComments } from "./json.ts";
 import type { LocalEndpoint } from "./probe.ts";
 
-export interface ServiceConfig {
-	name: string;
-	executable: string;
-	args?: string[];
-	port?: number;
-	env?: Record<string, string>;
-	cwd?: string;
-	startupTimeoutMs?: number;
-	healthCheckPath?: string;
-	healthCheckIntervalMs?: number;
-}
+import type { ServiceConfig } from "./process.ts";
+export type { ServiceConfig };
 
 export interface LocalModelsConfig {
 	enabled?: boolean;

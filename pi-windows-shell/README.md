@@ -1,11 +1,11 @@
-# @bacnh85/pi-windows-tools
+# pi-windows-shell
 
 Pi extension for Windows-native shell execution, paths, WSL, safety checks, and developer-tool discovery.
 
 ## Install
 
 ```bash
-pi install npm:@bacnh85/pi-windows-tools
+pi install npm:pi-windows-shell
 ```
 
 ## Quick Start

@@ -73,7 +73,7 @@ export class ServiceManager {
 		const url = `http://localhost:${config.port}${path}`;
 
 		while (Date.now() < deadline) {
-			if (!this.isRunning(config.name)) {
+			if (proc.exitCode !== null || proc.signalCode !== null) {
 				inst.status = "error";
 				throw new Error(`Service ${config.name} exited during startup`);
 			}

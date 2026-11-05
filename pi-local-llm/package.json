@@ -1,34 +1,40 @@
 {
-	"name": "pi-local-llm",
-	"version": "0.1.0",
-	"type": "module",
-	"description": "Local LLM model discovery for pi",
-	"keywords": [
-		"pi-package",
-		"pi",
-		"llm",
-		"local",
-		"llama.cpp",
-		"ollama"
-	],
-	"license": "MIT",
-	"engines": {
-		"node": ">=22.19.0"
-	},
-	"files": [
-		"src"
-	],
-	"pi": {
-		"extensions": [
-			"./src/index.ts"
-		]
-	},
-	"peerDependencies": {
-		"@earendil-works/pi-ai": "*",
-		"@earendil-works/pi-coding-agent": "*"
-	},
-	"devDependencies": {
-		"@types/node": "22.19.19",
-		"typescript": "5.9.3"
-	}
+  "name": "@minicode26/pi-local-llm",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local LLM model discovery for pi",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "llm",
+    "local",
+    "llama.cpp",
+    "ollama"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "extensions",
+    "README.md",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3"
+  }
 }
